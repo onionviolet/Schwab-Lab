@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flight Lab — Schwab Lab</title>
+<link rel="stylesheet" href="assets/css/lab.css">
+<link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+</head>
+<body>
+<header class="header"><div class="brand"><a href="index.html" class="mark" style="text-decoration:none" aria-label="Go to Schwab Lab home">↗</a><div><div class="brand-title">Schwab Lab <span style="color:#5de4cf">/</span> Flight Lab</div><div class="brand-sub">3D Flight Dynamics Workspace</div></div></div><div class="righthead"><a href="index.html" class="btn small home-link">← Home</a><span class="pill"><span class="statusdot"></span> Local data processing</span><span class="pill">Analysis only • no control output</span></div></header>
+<main class="main">
+<section class="panel left"><div class="panelhead"><span class="paneltitle">01 / FLIGHT DATA</span><span style="color:#59ddc7;font-size:12px" id="sourceBadge">DEMO</span></div><div class="pad">
+<div class="eyebrow">Input source</div><h2 class="h2">Trajectory workspace</h2><div class="muted">Explore sample motion or import measured positions from a flight log.</div>
+<div class="stack" style="margin-top:15px"><label for="csvInput" class="btn primary">↑ &nbsp; Import flight CSV</label><input id="csvInput" type="file" accept=".csv,.txt,text/csv"><button class="btn" id="demoBtn">↺ &nbsp; Regenerate example</button><button class="btn" id="exportBtn">↓ &nbsp; Export current data</button></div><div class="alert" id="error" role="status"></div>
+<div class="separator"></div><div class="eyebrow">Illustrative free-flight model</div><div class="muted">Starts after powered flight. These teaching parameters do not predict a particular rocket's performance.</div>
+<div class="field"><label for="v0">Initial upward speed <span class="value" id="v0val">48 m/s</span></label><input type="range" id="v0" min="10" max="75" step="1" value="48"></div>
+<div class="field"><label for="side">Initial sideways speed <span class="value" id="sideval">5 m/s</span></label><input type="range" id="side" min="0" max="14" step="0.5" value="5"></div>
+<div class="field"><label for="wind">Crosswind velocity <span class="value" id="windval">3 m/s</span></label><input type="range" id="wind" min="-12" max="12" step="0.5" value="3"></div>
+<div class="field"><label for="drag">Coast damping <span class="value" id="dragval">0.10 /s</span></label><input type="range" id="drag" min="0.02" max="0.22" step="0.01" value="0.10"></div>
+<div class="separator"></div><div class="eyebrow">Reference direction</div><div class="muted">A visual comparison vector, not a command or steering target.</div>
+<div class="field"><label for="bearing">Bearing from north <span class="value" id="bearingval">0°</span></label><input type="range" id="bearing" min="0" max="360" step="5" value="0"></div>
+<div class="field"><label for="elev">Angle above horizon <span class="value" id="elevval">90°</span></label><input type="range" id="elev" min="-90" max="90" step="5" value="90"></div>
+<div class="separator"></div><div class="eyebrow">Vector overlays</div><div class="switchline"><label><input type="checkbox" id="showVel" checked> Velocity</label><label><input type="checkbox" id="showAcc" checked> Acceleration</label><label><input type="checkbox" id="showRef" checked> Reference</label></div>
+<div class="notice"><strong style="color:#e7f3fd">CSV columns:</strong> <code>time,x,y,z</code> in seconds and meters, with optional <code>vx,vy,vz</code>. Time + altitude alone also works. Coordinates: east (+x), north (+y), up (+z). All processing stays on your device.</div>
+</div></section>
+<section class="panel visualcol"><div class="panelhead"><span class="paneltitle">02 / SPATIAL FLIGHT VIEW</span><div class="legend"><span><i class="swatch" style="background:#50dec4"></i> Path</span><span><i class="swatch" style="background:var(--blue)"></i> Velocity</span><span><i class="swatch" style="background:var(--amber)"></i> Acceleration</span></div></div>
+<div class="viewer"><canvas id="scene" aria-label="Three dimensional plotted rocket trajectory with vectors"></canvas><div class="topnote">Inertial frame • east / north / up</div><div class="topright"><button id="resetCam" class="btn small">⟳ Reset view</button></div><div class="viewnote">Drag to orbit · Scroll to zoom · Arrows show direction (not magnitude)</div></div>
+<div class="progress"><input id="timeline" type="range" min="0" max="1000" step="1" value="0" aria-label="Flight time position"><span class="clock" id="clock">0.0 s</span></div><div class="controlbar"><div class="btnline" style="max-width:230px"><button class="btn primary" id="playBtn">▶ Play</button><button class="btn small" id="stepBtn">+1 frame</button></div><div style="display:flex;align-items:center;gap:9px"><label for="speed">Playback</label><select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option></select></div></div></section>
+<section class="panel right"><div class="panelhead"><span class="paneltitle">03 / TELEMETRY READOUT</span><span style="font-size:11px;color:#80a4b8" id="phase">COAST</span></div>
+<div class="metric"><div class="metric-name">Current altitude</div><div class="metric-value" id="altValue">— <small>m</small></div><div class="metric-sub">Vertical position above reference plane</div></div>
+<div class="metric"><div class="metric-name">3D ground-relative speed</div><div class="metric-value" id="spdValue">— <small>m/s</small></div><div class="metric-sub">Magnitude of velocity vector</div></div>
+<div class="metric"><div class="metric-name">Maximum altitude</div><div class="metric-value" id="apValue">— <small>m</small></div><div class="metric-sub" id="apTime">Apogee time: — s</div></div>
+<div class="metric"><div class="metric-name">Current vector components</div><div class="minirow"><span>Velocity east / north / up</span></div><div class="readout-sub"><div class="box"><span>vₓ • East</span><b id="vx">—</b></div><div class="box"><span>vᵧ • North</span><b id="vy">—</b></div><div class="box"><span>vᵤ • Up</span><b id="vz">—</b></div><div class="box"><span>|a| • Accel.</span><b id="accel">—</b></div></div></div>
+<div class="metric"><div class="metric-name">Reference comparison</div><div class="minirow"><span>Velocity-to-reference angle</span><b id="errorAngle">—</b></div><div class="minirow"><span>Horizontal displacement</span><b id="drift">—</b></div><div class="minirow"><span>Flight duration</span><b id="duration">—</b></div><div class="metric-sub" style="margin-top:7px">For review only. No commands are generated.</div></div>
+</section>
+<section class="panel charts"><div class="panelhead"><span class="paneltitle">04 / TIME SERIES</span><span class="muted" id="rowsInfo">— points</span></div><div class="chartgrid"><div class="graphbox"><div class="graphname">Altitude <span style="color:#7db3c8;font-weight:400">(m)</span></div><canvas id="altChart"></canvas></div><div class="graphbox"><div class="graphname">Speed <span style="color:#7db3c8;font-weight:400">(m/s)</span></div><canvas id="speedChart"></canvas></div></div></section>
+</main>
+<div class="footer">Schwab Lab · Flight Lab 1.0 — an educational, offline post-flight analysis tool. Simplified example uses gravity, linear velocity damping, horizontal wind, and an illustrative high-drag descent phase. <strong>Not</strong> flight-certified or suitable for planning, guidance, targeting, recovery timing, or controlling physical vehicles. <button class="footlink" id="csvHelp">Download CSV template</button>.</div>
+<script defer src="assets/js/flight-lab.js"></script>
+</body>
+</html>
