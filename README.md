@@ -141,20 +141,6 @@ Not all `.ork` files contain the full time series: OpenRocket may store only sum
 
 **This is a read-only viewer, not a replacement for OpenRocket's physics simulation engine.** It does not calculate expected launch behavior or provide active guidance or control.
 
-## Launch Environment & conservative federal flags (version 2.2)
-
-Design Archive now stores launch-location reference coordinates selected from a map or typed manually, date and time, recorded launch angle, temperature, pressure, and wind. The map is for documenting a site **only**, not choosing a safe launch site. It uses Leaflet and OpenStreetMap tiles over the network; the rest of the app works offline without the map. Nothing is geolocated automatically. These fields are included in browser saves and exported `.schwab.json` projects, and old archive files still open.
-
-An automatic **Regulatory Flags** panel compares recorded entries with selected FAA amateur-rocket rules in 14 CFR Part 101. It flags missing data, Class 1 classification conflicts (loaded mass, propellant mass, materials, and propellant type), self-reported hazards, and additional review obligations potentially relevant to non-Class 1 activities. All flags cite official sources.
-
-**Critical limits:** This is not legal advice, a regulatory clearance, a live airspace check, or a launch-safety determination. It never returns approval or 'safe to launch'. It does not query FAA NOTAMs, airport boundaries, temporary flight restrictions, restricted airspace, or local laws. Separately consult FAA resources and qualified adult supervision. An imported `.ork` is not proof its entered materials or motor are compliant; undocumented inputs remain unknown.
-
-## Guidance Research
-
-`guidance.html` holds the future passive research roadmap, reference-frame concepts and measurement notes. It does not produce steering commands, motor selection advice, live guidance, or in-flight control.
-
-Official sources: [14 CFR Part 101 Subpart C](https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-101/subpart-C), [FAA airspace restrictions](https://www.faa.gov/air_traffic/publications/us_restrictions), [FAA NOTAMs and TFRs](https://www.faa.gov/pilots/safety/notams_tfr).
-
 ## Site Conditions, Regulatory Flags & Guidance Research (v2.2)
 
 In **Design Archive → Site Conditions & Safety Review**, record a place and date associated with an experiment or existing design, including a point selected from an OpenStreetMap map (Leaflet), site elevation, observed atmospheric values, and the angle noted in a prior report. Entries are **documentation only** and are never fed into launch commands, launch-angle optimization, or a new rocket flight prediction. All these fields are included in **Save to browser**, **Export project**, and **Open project**. Previously exported v1 archives without the site fields remain readable.
@@ -163,9 +149,33 @@ The **Automatic regulatory flagger** is a conservative, offline screening tool b
 
 - Highlights recorded mass above 1,500 grams including propellant, or propellant above 125 grams, as **possible Class 1 classification mismatches** under § 101.22.
 - Flags uncertainty about structural materials, substantial metal parts, and slow-burning propellant.
-- Records whether airspace, site permission and hazard reviews have been separately documented.
+- Flags any self-reported potential hazard under § 101.23 and records whether airspace, site permission and hazard reviews have been separately documented.
 - Always warns that applicable FAA restrictions and ATC requirements may need independent review.
 
-**It never returns a launch authorization or a legal compliance certificate.** Being outside the Class 1 definition does **not** mean that an operation is necessarily unlawful; it may be in a different class with different requirements. This app has no live FAA/NOTAM, airport-boundary, restricted-airspace, or governmental approval feed. The interactive map is for a reference point **only**. OpenStreetMap map tiles require internet access and receive map tile requests; manual coordinate input and project data processing are local. Future weather is not retrieved or forecast. Regulations may change—always review the official sources and consult qualified personnel.
+**It never returns a launch authorization or a legal compliance certificate.** Being outside the Class 1 definition does **not** mean that an operation is necessarily unlawful; it may be in a different class with different requirements. This app has no live FAA/NOTAM, airport-boundary, restricted-airspace, or governmental approval feed. The interactive map is for a reference point **only**. OpenStreetMap map tiles require internet access and receive map tile requests; manual coordinate input and project data processing are local. When requested, weather data is retrieved from Open-Meteo; availability varies by date and location, and output is not verified on-site. Regulations may change—always review the official sources and consult qualified personnel.
 
 **Guidance Research** is a reserved, read-only educational section about coordinate frames, measurement uncertainty, and comparing previously recorded data. It contains no steering logic, flight control outputs, targeting, or actuator interfaces.
+
+The standalone `guidance.html` is also available as a passive research roadmap.
+
+
+## New workspaces — local-first archive
+
+- `physics.html`: OpenRocket `.ork` ZIP/XML component inventory, recorded motor metadata, saved flight-data branch graphs with selectable channels (altitude, velocity, acceleration, drag, thrust, mass), events, and CSV export. Summary-only simulation files cannot create missing timeseries.
+- `physics.html#siteConditions`: optional site map (Leaflet/OpenStreetMap), site-local date/time, launch-angle **observation**, pressure, temperature, humidity, visibility, cloud, wind, preliminary FAA Part 101 flags. Weather lookup uses Open-Meteo forecast or historical modeling when supported. Weather is not verified, the map does not check airspace, and flags do not convey launch permission.
+- `guidance.html`: non-operational guidance research roadmap and locally saved/exported notebook; no commands, targeting, control-system or live interface.
+- `cad.html`: offline-model CAD inspection for STL, OBJ, and 3MF meshes, Prusa printer metadata, materials, print notes and revision labels. Raw 3MF meshes are shown without build-transform handling. CAD models can be saved locally and exported as `.schwabcad.json` archives. Preview dimensions are **not** print, structural, or flight validation.
+
+### Persistence and external services
+
+Project and CAD browser saves use IndexedDB; guidance notes use localStorage. Export portable `.schwab.json` and `.schwabcad.json` files to keep copies independently. The original imported `.ork` and CAD file bytes are included in their respective archive exports (subject to size limits). Clearing browser site data deletes local saves.
+
+No upload backend or account is provided. For mapping, Leaflet and OpenStreetMap are requested over the network; weather requests contact Open-Meteo **only when you press the weather lookup button**. Imported CAD `.3mf` archives are read with the locally bundled JSZip parser. Internet access is needed for map tiles and weather lookup but not for local file inspection or archiving.
+
+### Safety and limitations
+
+This project is an educational, passive software archive. It does not generate guidance commands, powered flight planning, flight-critical CAD geometry, airspace clearance, or legal determinations. The federal review checklist references [14 CFR Part 101 Subpart C](https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-101/subpart-C); consult authoritative FAA guidance and qualified local launch supervisors. Weather model data must not be used as a safety or launch permission decision.
+
+## Validation
+
+Run `python3 tests/site_check.py` from the repository root to check internal page links, referenced assets and duplicate element IDs. The script also runs `node --check` on JavaScript when Node.js is available. Browser-based file import and IndexedDB saving should be retested after UI changes.
