@@ -179,3 +179,9 @@ This project is an educational, passive software archive. It does not generate g
 ## Validation
 
 Run `python3 tests/site_check.py` from the repository root to check internal page links, referenced assets and duplicate element IDs. The script also runs `node --check` on JavaScript when Node.js is available. Browser-based file import and IndexedDB saving should be retested after UI changes.\n\n## Telemetry & Validation v3\n\nOpen [telemetry.html](telemetry.html) for passive CSV telemetry comparison, synchronized time-series plots, reference interpolation, data-quality flags, illustrative measurement-uncertainty bands, RMSD and mean residual metrics. Save a project locally or export and reimport a versioned `.schwab.json` file. Data remains in the browser.\n\nThis does not estimate live attitude from IMU logs, model active control, validate launch safety, or predict geographic flight paths. The reference must provide a matching channel label and timestamp units (seconds). The project JSON can contain original imported CSV data; review it before sharing publicly.\n
+
+## Live Sensors v3.1
+
+Visit [`live.html`](live.html) for a virtual Arduino Uno dashboard, local recording, CSV downloads and replay. In compatible Chromium desktop browsers over HTTPS, the **USB Serial (read only)** option can open a device the user explicitly selects. Schwab Lab never writes serial data to the hardware.
+
+Expected serial line, with comma-separated **numeric** values: `time,pressure,temperature,acceleration,rotation,altitude` (seconds, hPa, °C, m/s², °/s, m). Optional header accepted. The physical hardware and firmware must already supply this stream; the application does not install firmware, provide a sensor wiring guide, or send device commands. Readings remain on the local machine unless explicitly downloaded/shared. The synthetic mode is a software demonstration, not a flight predictor.
