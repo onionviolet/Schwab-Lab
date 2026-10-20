@@ -14,10 +14,10 @@
 <div class="eyebrow">Input source</div><h2 class="h2">Trajectory workspace</h2><div class="muted">Explore sample motion or import measured positions from a flight log.</div>
 <div class="stack" style="margin-top:15px"><label for="csvInput" class="btn primary">↑ &nbsp; Import flight CSV</label><input id="csvInput" type="file" accept=".csv,.txt,text/csv"><button class="btn" id="demoBtn">↺ &nbsp; Regenerate example</button><button class="btn" id="exportBtn">↓ &nbsp; Export current data</button><button class="btn" id="saveFlightBtn">Save flight to browser</button><button class="btn" id="loadFlightBtn">Load saved flight</button></div><div class="alert" id="error" role="status"></div>
 <div class="separator"></div><div class="eyebrow">Illustrative free-flight model</div><div class="muted">Starts after powered flight. These teaching parameters do not predict a particular rocket's performance.</div>
-<div class="field"><label for="v0">Initial upward speed <span class="value" id="v0val">48 m/s</span></label><input type="range" id="v0" min="10" max="75" step="1" value="48"></div>
-<div class="field"><label for="side">Initial sideways speed <span class="value" id="sideval">5 m/s</span></label><input type="range" id="side" min="0" max="14" step="0.5" value="5"></div>
-<div class="field"><label for="wind">Crosswind velocity <span class="value" id="windval">3 m/s</span></label><input type="range" id="wind" min="-12" max="12" step="0.5" value="3"></div>
-<div class="field"><label for="drag">Coast damping <span class="value" id="dragval">0.10 /s</span></label><input type="range" id="drag" min="0.02" max="0.22" step="0.01" value="0.10"></div>
+<div class="field"><label for="v0">Initial upward speed <span class="value" id="v0val">48 m/s</span></label><input type="range" id="v0" min="0" max="200" step="1" value="48"></div>
+<div class="field"><label for="side">Initial sideways speed <span class="value" id="sideval">5 m/s</span></label><input type="range" id="side" min="0" max="60" step="0.5" value="5"></div>
+<div class="field"><label for="wind">Crosswind velocity <span class="value" id="windval">3 m/s</span></label><input type="range" id="wind" min="-50" max="50" step="0.5" value="3"></div>
+<div class="field"><label for="drag">Coast damping <span class="value" id="dragval">0.10 /s</span></label><input type="range" id="drag" min="0" max="1" step="0.01" value="0.10"></div>
 <div class="separator"></div><div class="eyebrow">Reference direction</div><div class="muted">A visual comparison vector, not a command or steering target.</div>
 <div class="field"><label for="bearing">Bearing from north <span class="value" id="bearingval">0°</span></label><input type="range" id="bearing" min="0" max="360" step="5" value="0"></div>
 <div class="field"><label for="elev">Angle above horizon <span class="value" id="elevval">90°</span></label><input type="range" id="elev" min="-90" max="90" step="5" value="90"></div>
