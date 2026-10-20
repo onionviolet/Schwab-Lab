@@ -26,7 +26,9 @@ let cache={};
 function buildCache(){
  const z=rows.map(r=>r.z),s=rows.map(r=>Math.hypot(r.vx,r.vy,r.vz)),x=rows.map(r=>r.x),y=rows.map(r=>r.y);
  const lo=a=>a.reduce((m,v)=>Math.min(m,v),Infinity),hi=a=>a.reduce((m,v)=>Math.max(m,v),-Infinity);
- cache={series:{z,s},min:{z:lo(z),s:lo(s)},max:{z:hi(z),s:hi(s)},minX:lo(x),maxX:hi(x),minY:lo(y),maxY:hi(y)};
+ const at=(a,v)=>a.indexOf(v);
+ const acc=rows.map(r=>Math.hypot(r.ax,r.ay,r.az));
+ cache={peakSpeed:hi(s),peakSpeedT:rows[at(s,hi(s))].t,peakAccel:hi(acc),peakAccelT:rows[at(acc,hi(acc))].t,series:{z,s},min:{z:lo(z),s:lo(s)},max:{z:hi(z),s:hi(s)},minX:lo(x),maxX:hi(x),minY:lo(y),maxY:hi(y)};
 }
 function updateLabels(){$('v0val').textContent=fmt(+ui.v0.value,0)+' m/s';$('sideval').textContent=fmt(+ui.side.value,1)+' m/s';$('windval').textContent=fmt(+ui.wind.value,1)+' m/s';$('dragval').textContent=fmt(+ui.drag.value,2)+' /s';$('bearingval').textContent=ui.bearing.value+'°';$('elevval').textContent=ui.elev.value+'°';}
 function useData(data,kind,notes=[]){
@@ -98,11 +100,15 @@ function parseCsv(text){
  out.notes=[...new Set(notes)];
  return out;
 }
+async function loadFile(file){
+ try{const data=parseCsv(await file.text());useData(data,'import',data.notes)}catch(error){$('error').textContent=error.message}
+}
 $('csvInput').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
- try{const data=parseCsv(await file.text());useData(data,'import',data.notes)}catch(error){$('error').textContent=error.message}
- e.target.value='';
+ await loadFile(file);e.target.value='';
 });
+window.addEventListener('dragover',e=>{if(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'))e.preventDefault()});
+window.addEventListener('drop',e=>{const file=e.dataTransfer&&e.dataTransfer.files[0];if(!file)return;e.preventDefault();loadFile(file)});
 function csvText(array){return 'time,x,y,z,vx,vy,vz,ax,ay,az\n'+array.map(r=>['t','x','y','z','vx','vy','vz','ax','ay','az'].map(k=>fmt(r[k],5)).join(',')).join('\n')+'\n'}
 function download(content,name,mime='text/csv') {let a=document.createElement('a'),url=URL.createObjectURL(new Blob([content],{type:mime}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 $('exportBtn').addEventListener('click',()=>download(csvText(rows),'schwab_lab_flight_data.csv'));
@@ -115,6 +121,12 @@ $('loadFlightBtn').addEventListener('click',()=>{
 });
 
 $('csvHelp').addEventListener('click',()=>download('time,x,y,z\n0,0,0,0\n1,1,0,10\n2,2,1,18\n3,3,2,21\n4,4,3,19\n5,5,3,12\n6,6,4,0\n','flight_csv_template.csv'));
+function now(){ // state at the playback time, linearly interpolated between the two surrounding samples
+ const b=rows[index];if(index<=0||elapsed>=b.t)return b;
+ const a=rows[index-1],f=clamp((elapsed-a.t)/(b.t-a.t),0,1),out={};
+ for(const k of ['x','y','z','vx','vy','vz','ax','ay','az'])out[k]=a[k]+(b[k]-a[k])*f;
+ out.t=elapsed;return out;
+}
 const timeIndex=t=>{let l=0,h=rows.length-1;while(l<h){let m=(l+h)>>1;if(rows[m].t<t)l=m+1;else h=m}return clamp(l,0,rows.length-1)};
 function setTime(t){elapsed=clamp(t,rows[0].t,rows.at(-1).t);index=timeIndex(elapsed);$('timeline').value=Math.round(1000*(elapsed-rows[0].t)/(rows.at(-1).t-rows[0].t));renderAll()}
 $('timeline').addEventListener('input',e=>{anim=false;$('playBtn').textContent='▶ Play';setTime(rows[0].t+(rows.at(-1).t-rows[0].t)*e.target.value/1000)});
@@ -166,10 +178,10 @@ function drawScene(){
  ctx.font='11px ui-sans-serif,system-ui';
  for(let axis of axes){let P=point(origin),Q=point({x:origin.x+axis.d[0]*range*.7,y:origin.y+axis.d[1]*range*.7,z:axis.d[2]*range*.7});ctx.strokeStyle=axis.c;ctx.lineWidth=1.25;ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(P.x,P.y);ctx.lineTo(Q.x,Q.y);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle=axis.c;ctx.fillText(axis.lbl,Q.x+4,Q.y-4)}
  // full path and traveled track
- const drawPath=(end,color,lineWidth)=>{ctx.beginPath();let jump=Math.max(1,Math.ceil(rows.length/2400));for(let i=0;i<=end;i+=jump){let q=point(rows[i]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y)}let final=point(rows[end]);ctx.lineTo(final.x,final.y);ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.stroke()};
- drawPath(rows.length-1,'#45778c',1.7);drawPath(index,'#4fe7ca',3.2);
+ const drawPath=(end,color,lineWidth,tail)=>{ctx.beginPath();let jump=Math.max(1,Math.ceil(rows.length/2400));for(let i=0;i<=end;i+=jump){let q=point(rows[i]);if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y)}let final=point(tail||rows[end]);ctx.lineTo(final.x,final.y);ctx.strokeStyle=color;ctx.lineWidth=lineWidth;ctx.stroke()};
+ drawPath(rows.length-1,'#45778c',1.7);drawPath(Math.max(0,index-1),'#4fe7ca',3.2,now());
  const peak=point(rows[apIdx]);ctx.fillStyle='#fcbd72';ctx.beginPath();ctx.arc(peak.x,peak.y,4.2,0,Math.PI*2);ctx.fill();ctx.font='11px system-ui';ctx.fillText('APOGEE',peak.x+8,peak.y-7);
- let r=rows[index],p=point(r);let dotrad=5.5;ctx.fillStyle='#ddfff8';ctx.beginPath();ctx.arc(p.x,p.y,dotrad,0,2*Math.PI);ctx.fill();ctx.strokeStyle='#61e4d1';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(p.x,p.y,dotrad+5,0,2*Math.PI);ctx.stroke();
+ let r=now(),p=point(r);let dotrad=5.5;ctx.fillStyle='#ddfff8';ctx.beginPath();ctx.arc(p.x,p.y,dotrad,0,2*Math.PI);ctx.fill();ctx.strokeStyle='#61e4d1';ctx.lineWidth=1.8;ctx.beginPath();ctx.arc(p.x,p.y,dotrad+5,0,2*Math.PI);ctx.stroke();
  // directional arrows use constant display lengths; no physical proportionality intended.
  let L=Math.min(range*.24,Math.max(14,range*.16));
  const v=[r.vx,r.vy,r.vz],a=[r.ax,r.ay,r.az];
@@ -190,10 +202,10 @@ function drawPlot(canvas,key,color){
  for(let i=0;i<=4;i++){let value=ymin+(ymax-ymin)*i/4,yy=ty(value);ctx.strokeStyle='#294357';ctx.beginPath();ctx.moveTo(g.l,yy);ctx.lineTo(w-g.r,yy);ctx.stroke();ctx.fillStyle='#7e9db4';ctx.fillText(fmt(value,value>=100?0:1),g.l-8,yy+4)}
  ctx.fillStyle='#819cb1';ctx.textAlign='center';for(let i=0;i<=4;i++){let t=time0+span*i/4;ctx.fillText(fmt(t,1)+' s',tx(t),h-10)}
  ctx.beginPath();let stride=Math.max(1,Math.floor(rows.length/2400));for(let i=0;i<rows.length;i+=stride){let x=tx(rows[i].t),y=ty(values[i]);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}ctx.lineTo(tx(rows.at(-1).t),ty(values.at(-1)));ctx.strokeStyle=color;ctx.lineWidth=2;ctx.stroke();
- let t=rows[index].t;ctx.setLineDash([4,5]);ctx.strokeStyle='#f1f6ffbb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(tx(t),g.t);ctx.lineTo(tx(t),h-g.b);ctx.stroke();ctx.setLineDash([]);
- ctx.fillStyle=color;ctx.beginPath();ctx.arc(tx(t),ty(values[index]),4.5,0,2*Math.PI);ctx.fill();
+ const c=now(),t=c.t,cv=key==='z'?c.z:Math.hypot(c.vx,c.vy,c.vz);ctx.setLineDash([4,5]);ctx.strokeStyle='#f1f6ffbb';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(tx(t),g.t);ctx.lineTo(tx(t),h-g.b);ctx.stroke();ctx.setLineDash([]);
+ ctx.fillStyle=color;ctx.beginPath();ctx.arc(tx(t),ty(cv),4.5,0,2*Math.PI);ctx.fill();
 }
-function renderTelemetry(){let r=rows[index],ap=rows[apIdx];$('clock').textContent=fmt(r.t,1)+' s';$('altValue').innerHTML=fmt(r.z)+' <small>m</small>';$('spdValue').innerHTML=fmt(norm([r.vx,r.vy,r.vz]))+' <small>m/s</small>';$('apValue').innerHTML=fmt(ap.z)+' <small>m</small>';$('apTime').textContent='Apogee time: '+fmt(ap.t)+' s';$('phase').textContent=index<apIdx?'ASCENT':index===apIdx?'APOGEE':'DESCENT';
+function renderTelemetry(){let r=now(),ap=rows[apIdx];$('clock').textContent=fmt(r.t,1)+' s';$('altValue').innerHTML=fmt(r.z)+' <small>m</small>';$('spdValue').innerHTML=fmt(norm([r.vx,r.vy,r.vz]))+' <small>m/s</small>';$('apValue').innerHTML=fmt(ap.z)+' <small>m</small>';$('apTime').textContent='Apogee time: '+fmt(ap.t)+' s';$('maxSpeed').textContent=fmt(cache.peakSpeed)+' m/s at '+fmt(cache.peakSpeedT)+' s';$('maxAccel').textContent=fmt(cache.peakAccel/9.80665,1)+' g at '+fmt(cache.peakAccelT)+' s';const last=rows.length-1;$('phase').textContent=index===last&&index>apIdx?(rows[last].z<=rows[0].z+1?'LANDED':'END OF LOG'):index<apIdx?'ASCENT':index===apIdx?'APOGEE':'DESCENT';
  for(let k of ['vx','vy','vz'])$(k).textContent=fmt(r[k],2)+' m/s';$('accel').textContent=fmt(norm([r.ax,r.ay,r.az]),2)+' m/s²';
  let b=+ui.bearing.value*Math.PI/180,e=+ui.elev.value*Math.PI/180,d=[Math.cos(e)*Math.sin(b),Math.cos(e)*Math.cos(b),Math.sin(e)],v=[r.vx,r.vy,r.vz],vm=norm(v),c=vm<1e-7?NaN:clamp(v.reduce((s,n,i)=>s+n*d[i],0)/vm,-1,1);
  $('errorAngle').textContent=Number.isFinite(c)?fmt(Math.acos(c)*180/Math.PI)+'°':'—';$('drift').textContent=fmt(Math.hypot(r.x-rows[0].x,r.y-rows[0].y))+' m';$('duration').textContent=fmt(rows.at(-1).t-rows[0].t)+' s';
