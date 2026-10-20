@@ -43,12 +43,9 @@ for(const id of ['showVel','showAcc','showRef'])$(id).addEventListener('change',
 $('demoBtn').addEventListener('click',tryDemo);
 function parseCsv(text){
  let clean=text.replace(/^\ufeff/,'').trim();
- // OpenRocket CSV exports their actual column names as a '# Time (s),Altitude (m),...' line.
- clean=clean.split(/\r?
-/).map(line=>/^\s*#\s*time\s*\(/i.test(line)&&/,\s*altitude\s*\(/i.test(line)?line.replace(/^\s*#\s*/, ''):line).join('
-');
- let firstLine=clean.split(/\r?
-/).find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
+ // OpenRocket uses a commented column-header row followed by numeric data.
+ clean=clean.split(/\r?\n/).map(line=>/^\s*#\s*time\s*\(/i.test(line)&&/,\s*altitude\s*\(/i.test(line)?line.replace(/^\s*#\s*/, ''):line).join('\n');
+ let firstLine=clean.split(/\r?\n/).find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
  let delimiter=[',','\t',';'].sort((a,b)=>firstLine.split(b).length-firstLine.split(a).length)[0];
  const matrix=[];let item='',line=[],inQuote=false;
  for(let i=0;i<clean.length;i++){
