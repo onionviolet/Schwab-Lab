@@ -42,34 +42,43 @@ for(const id of ['bearing','elev'])ui[id].addEventListener('input',()=>{updateLa
 for(const id of ['showVel','showAcc','showRef'])$(id).addEventListener('change',renderScene);
 $('demoBtn').addEventListener('click',tryDemo);
 function parseCsv(text){
- let clean=text.replace(/^\ufeff/,'').trim();
- // OpenRocket uses a commented column-header row followed by numeric data.
- clean=clean.split(/\r?\n/).map(line=>/^\s*#\s*time\s*\(/i.test(line)&&/,\s*altitude\s*\(/i.test(line)?line.replace(/^\s*#\s*/, ''):line).join('\n');
- let firstLine=clean.split(/\r?\n/).find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
- let delimiter=[',','\t',';'].sort((a,b)=>firstLine.split(b).length-firstLine.split(a).length)[0];
- const matrix=[];let item='',line=[],inQuote=false;
- for(let i=0;i<clean.length;i++){
-  let c=clean[i];if(c==='"'){if(inQuote&&clean[i+1]==='"'){item+='"';i++}else inQuote=!inQuote}
-  else if(!inQuote&&c===delimiter){line.push(item.trim());item=''}
-  else if(!inQuote&&(c==='\n'||c==='\r')){if(c==='\r'&&clean[i+1]==='\n')i++;line.push(item.trim());if(line.some(Boolean)&&!line[0].startsWith('#'))matrix.push(line);line=[];item=''}
-  else item+=c;
+ const lines=text.replace(/^\uFEFF/,'').split(/\r?\n/);
+ const headerLine=lines.findIndex(line=>/^\s*#?\s*time\s*(\(|,|;|\t|$)/i.test(line)&&/altitude|height/i.test(line));
+ // OpenRocket writes a commented header, interspersed event messages and then numeric rows.
+ if(headerLine<0)throw Error('No time/altitude header found. Expected OpenRocket CSV or columns time,altitude.');
+ const original=lines[headerLine].replace(/^\s*#\s*/,'').trim();
+ const delim=[',','\t',';'].sort((a,b)=>original.split(b).length-original.split(a).length)[0];
+ function cells(line){const out=[];let value='',quoted=false;for(let i=0;i<line.length;i++){let ch=line[i];if(ch==='"'){if(quoted&&line[i+1]==='"'){value+='"';i++}else quoted=!quoted}else if(ch===delim&&!quoted){out.push(value.trim());value=''}else value+=ch}out.push(value.trim());return out}
+ const norm=x=>x.toLowerCase().replace(/\[[^\]]*\]/g,'').replace(/\([^)]*\)/g,'').replace(/[^a-z0-9]/g,'');
+ const names=cells(original).map(norm);
+ const pick=(...keys)=>names.findIndex(s=>keys.includes(s));
+ const cols={
+ t:pick('time','t','times','timestamp'),
+ z:pick('altitude','height','z','zm','altitudeagl','verticalposition'),
+ x:pick('x','xm','east','positioneast','eastposition','positioneastoflaunch'),
+ y:pick('y','ym','north','positionnorth','northposition','positionnorthoflaunch'),
+ vx:pick('vx','veast','velocityeast','eastvelocity'),
+ vy:pick('vy','vnorth','velocitynorth','northvelocity'),
+ vz:pick('vz','verticalvelocity','velocityz','velocityup','vup'),
+ ax:pick('ax','accelerationx'),
+ ay:pick('ay','accelerationy'),
+ az:pick('az','verticalacceleration','accelerationz')
+ };
+ if(cols.t<0||cols.z<0)throw Error('Could not identify time and altitude in header: '+original.slice(0,140));
+ const data=[];
+ for(let i=headerLine+1;i<lines.length;i++){
+   const line=lines[i].trim();
+   if(!line||line.startsWith('#'))continue;
+   const v=cells(line);
+   const read=k=>cols[k]===-1?NaN:Number(v[cols[k]]);
+   const t=read('t'),z=read('z');
+   if(!Number.isFinite(t)||!Number.isFinite(z))continue;
+   const row={t,z,x:Number.isFinite(read('x'))?read('x'):0,y:Number.isFinite(read('y'))?read('y'):0};
+   for(const k of ['vx','vy','vz','ax','ay','az'])row[k]=read(k);
+   data.push(row);
  }
- line.push(item.trim());if(line.some(Boolean)&&!line[0].startsWith('#'))matrix.push(line);
- if(matrix.length<4)throw Error('CSV requires a header and at least 3 data rows.');
- const normalize=s=>s.toLowerCase().replace(/\[[^\]]*\]/g,'').replace(/\([^)]*\)/g,'').replace(/[^a-z0-9]/g,'');
- const fields=matrix[0].map(normalize);
- const choices={t:['time','t','times'],x:['x','xm','east','positioneast','eastposition','positioneastoflaunch'],y:['y','ym','north','positionnorth','northposition','positionnorthoflaunch'],z:['z','zm','altitude','height','altitudeagl','altitudeaboveground','altitudeabovegroundlevel','verticalposition'],vx:['vx','veast','velocityeast','eastvelocity','velocityx'],vy:['vy','vnorth','velocitynorth','northvelocity','velocityy'],vz:['vz','vup','verticalvelocity','velocityz','velocityup'],ax:['ax','accelerationx'],ay:['ay','accelerationy'],az:['az','verticalacceleration','accelerationz']};
- let cols={}; for(let [key,opts] of Object.entries(choices)){let i=fields.findIndex(s=>opts.includes(s));cols[key]=i}
- if(cols.t<0||cols.z<0)throw Error('Missing time or altitude column. Required: time,z (or time,altitude).');
- let result=[];for(let ri=1;ri<matrix.length;ri++){
-  let cells=matrix[ri];if(!cells.join('').trim())continue;
-  let num=k=>cols[k]<0?NaN:Number(cells[cols[k]]);
-  let t=num('t'),z=num('z');if(!Number.isFinite(t)||!Number.isFinite(z))continue;
-  let v={t,x:cols.x>=0?num('x'):0,y:cols.y>=0?num('y'):0,z};
-  for(let q of ['vx','vy','vz','ax','ay','az'])v[q]=cols[q]<0?NaN:num(q);
-  result.push(v);
- }
- return result;
+ if(data.length<3)throw Error('CSV contains fewer than three valid time/altitude measurements.');
+ return data;
 }
 $('csvInput').addEventListener('change',async e=>{
  const file=e.target.files[0];if(!file)return;
