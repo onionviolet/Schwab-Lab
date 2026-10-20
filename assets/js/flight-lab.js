@@ -162,5 +162,5 @@ tryDemo();
 // Receive a passive simulated trajectory from Physics Studio via same-tab session storage.
 try{const transferred=sessionStorage.getItem('schwabLabPhysicsFlight');if(transferred){sessionStorage.removeItem('schwabLabPhysicsFlight');useData(JSON.parse(transferred),'physics')}}catch(e){$('error').textContent='Unable to open the transferred simulation.'}
 requestAnimationFrame(frame);
-window.__schwabLabTest={get rows(){return rows},parseCsv,renderAll};
+window.__schwabLabTest={get rows(){return rows},get index(){return index},parseCsv,renderAll};
 })();
