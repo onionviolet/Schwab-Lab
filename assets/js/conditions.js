@@ -6,21 +6,21 @@
   const fields = [
     'siteName','siteDateTime','siteLat','siteLon','siteElevation','launchAngle',
     'sitePressure','siteTemp','siteHumidity','siteWind','siteVisibility','siteCloud',
-    'construction','metalParts','slowProp','airspaceReview','sitePermission','safetyReview'
+    'construction','metalParts','slowProp','hazardRisk','airspaceReview','sitePermission','safetyReview'
   ];
   const limits = {
     siteLat:[-90,90],siteLon:[-180,180],siteElevation:[-500,9000],launchAngle:[0,180],
     sitePressure:[300,1150],siteTemp:[-100,65],siteHumidity:[0,100],siteWind:[0,150],
     siteVisibility:[0,100],siteCloud:[0,100]
   };
-  const defaults = {construction:'unknown',metalParts:'unknown',slowProp:'unknown',
+  const defaults = {construction:'unknown',metalParts:'unknown',slowProp:'unknown',hazardRisk:'unknown',
     airspaceReview:'unverified',sitePermission:'unverified',safetyReview:'unverified'};
   const allowed = {
     construction:['unknown','accepted','other'],metalParts:['unknown','no','yes'],
-    slowProp:['unknown','yes','no'],airspaceReview:['unverified','documented'],
+    slowProp:['unknown','yes','no'],hazardRisk:['unknown','no','yes'],airspaceReview:['unverified','documented'],
     sitePermission:['unverified','documented'],safetyReview:['unverified','documented']
   };
-  let map = null, marker = null, mapPending = null, manualEdit = false;
+  let map = null, marker = null, weatherMeta = null;
   const readNum = (id) => {const s=$(id).value.trim();return s===''?null:Number(s)};
   function capture(){
     const out={};
@@ -34,6 +34,7 @@
       }else if(allowed[key]){out[key]=allowed[key].includes(val)?val:defaults[key]}
       else{out[key]=val.slice(0,key==='siteName'?120:32)}
     }
+    out.weatherMeta=weatherMeta;
     return out;
   }
   function restore(data){
@@ -45,6 +46,8 @@
       }else if(allowed[key])el.value=allowed[key].includes(val)?val:defaults[key];
       else el.value=typeof val==='string'?val.slice(0,key==='siteName'?120:32):'';
     }
+    weatherMeta=obj.weatherMeta&&typeof obj.weatherMeta==='object'?obj.weatherMeta:null;
+    $('weatherMessage').textContent=weatherMeta?.source?'Weather record: '+weatherMeta.source+' · '+(weatherMeta.validTime||'unknown time')+' · retrieved '+(weatherMeta.retrievedAt||'unknown'):'Optional: look up weather, or enter your own measurements.';
     updateMarker(false);review();
   }
   // Every result requires independent review. 'critical' means possibly outside
@@ -83,6 +86,10 @@
       'Map tiles do not identify controlled airspace, airports, waivers, restrictions, or NOTAMs. Check with authoritative FAA resources and organizers.','§§ 101.23, 101.25');
     if(report.sitePermission!=='documented') add('review','Site permission unverified',
       'Record landowner and site permissions separately; this is not assessed by federal airspace checks.','Site review');
+    if(report.hazardRisk==='yes') add('attention','Possible hazard under FAA general limits',
+      'You reported a potential hazard to people, property or aircraft. 14 CFR § 101.23 prohibits amateur rocket operations that create these hazards. Seek independent safety review; this alert is not a legal ruling.','§ 101.23(a)(4)');
+    else if(report.hazardRisk!=='no') add('review','Possible hazards not assessed',
+      'No conclusion can be made about hazards to people, property or aircraft from the entered values or map.','§ 101.23(a)(4)');
     if(report.safetyReview!=='documented') add('review','Hazard assessment not documented',
       'Federal rules require amateur rockets not to create a hazard to people, property, or aircraft.','§ 101.23');
     add('info','Additional FAA requirements may apply',
@@ -125,7 +132,41 @@
       setTimeout(()=>map?.invalidateSize(),100);
     }catch(err){$('mapFallback').textContent='Map is unavailable. Enter coordinates manually.'}
   }
+  function weatherChanged(){if(weatherMeta){weatherMeta={...weatherMeta,modified:true};$('weatherMessage').textContent='Weather values have been edited since import. Verify provenance and measurements.';}}
+  async function lookupWeather(){
+    const button=$('fetchWeather');button.disabled=true;$('weatherMessage').textContent='Requesting weather data for the recorded site and date…';
+    try{
+      const lat=readNum('siteLat'),lon=readNum('siteLon'),dt=$('siteDateTime').value;
+      if(lat===null||lon===null||Math.abs(lat)>90||Math.abs(lon)>180)throw Error('Choose a point on the map or enter valid latitude and longitude first.');
+      if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dt))throw Error('Choose a site-local date and time first.');
+      const date=dt.slice(0,10),monthDay=new Date(date+'T12:00:00Z'),today=new Date(),delta=Math.floor((monthDay-new Date(today.toISOString().slice(0,10)+'T12:00:00Z'))/86400000);
+      if(delta>15)throw Error('This date is beyond the available forecast range. Record the date and enter observations manually until a forecast is available.');
+      const historic=delta< -5,service=historic?'https://archive-api.open-meteo.com/v1/archive':'https://api.open-meteo.com/v1/forecast';
+      const vars=['temperature_2m','surface_pressure','relative_humidity_2m','wind_speed_10m','cloud_cover','visibility'];
+      const qs=new URLSearchParams({latitude:String(lat),longitude:String(lon),start_date:date,end_date:date,hourly:vars.join(','),timezone:'auto',wind_speed_unit:'ms'});
+      if(!historic&&delta<0)qs.set('past_days','7');
+      const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);
+      let response;try{response=await fetch(service+'?'+qs.toString(),{signal:controller.signal})}finally{clearTimeout(timeout)}
+      if(!response.ok)throw Error('Weather provider returned HTTP '+response.status+'; try manual entry.');
+      const data=await response.json(),hourly=data.hourly;
+      if(!hourly?.time?.length)throw Error('No hourly data for that site and date.');
+      const target=dt.slice(0,13)+':00',index=hourly.time.indexOf(target);
+      if(index<0)throw Error('No hourly record matches the requested site-local time.');
+      const pairs={siteTemp:['temperature_2m',1],sitePressure:['surface_pressure',1],siteHumidity:['relative_humidity_2m',1],siteWind:['wind_speed_10m',1],siteCloud:['cloud_cover',1],siteVisibility:['visibility',.001]};
+      let count=0;for(const [id,[key,factor]] of Object.entries(pairs)){const n=Number(hourly[key]?.[index]);if(!Number.isFinite(n)||hourly[key]?.[index]===null)continue;let output=n*factor;
+        // Open-Meteo visibility is returned in metres, archive and forecasts share its unit.
+        const [lo,hi]=limits[id];if(output<lo||output>hi)continue;$(id).value=Number(output.toFixed(2)).toString();count++;
+      }
+      if(!count)throw Error('The weather response contains no measurements available for the selected hour.');
+      weatherMeta={source:historic?'Open-Meteo historical reanalysis':'Open-Meteo weather forecast model',validTime:hourly.time[index],timezone:data.timezone||'site local',retrievedAt:new Date().toISOString(),modified:false,latitude:lat,longitude:lon};
+      $('weatherMessage').textContent='Imported '+count+' modeled hourly values for '+weatherMeta.validTime+' ('+weatherMeta.timezone+'). Source: '+weatherMeta.source+'. This is not an on-site measurement or launch clearance.';
+      review();
+    }catch(err){$('weatherMessage').textContent='Weather lookup unavailable: '+err.message;}
+    finally{button.disabled=false}
+  }
+  $('fetchWeather').addEventListener('click',lookupWeather);
+  for(const id of ['sitePressure','siteTemp','siteHumidity','siteWind','siteCloud','siteVisibility'])$(id).addEventListener('input',weatherChanged);
   for(const id of fields){$(id).addEventListener('input',()=>{if(id==='siteLat'||id==='siteLon')updateMarker(false);review()});$(id).addEventListener('change',review)}
   initializeMap();review();
-  window.SchwabConditions={capture,restore,review,evaluate};
+  window.SchwabConditions={capture,restore,review,evaluate,lookupWeather};
 })();
