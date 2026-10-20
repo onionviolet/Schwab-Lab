@@ -76,6 +76,14 @@ $('csvInput').addEventListener('change',async e=>{
 function csvText(array){return 'time,x,y,z,vx,vy,vz,ax,ay,az\n'+array.map(r=>['t','x','y','z','vx','vy','vz','ax','ay','az'].map(k=>fmt(r[k],5)).join(',')).join('\n')+'\n'}
 function download(content,name,mime='text/csv') {let a=document.createElement('a'),url=URL.createObjectURL(new Blob([content],{type:mime}));a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),500)}
 $('exportBtn').addEventListener('click',()=>download(csvText(rows),'schwab_lab_flight_data.csv'));
+// Local-only snapshot of the current trajectory for follow-up analysis.
+$('saveFlightBtn').addEventListener('click',()=>{
+ try{localStorage.setItem('schwabLabSavedFlight',JSON.stringify({version:1,when:new Date().toISOString(),rows:rows.slice(0,20000)}));$('error').textContent='Saved flight data in this browser. Export a CSV for a portable copy.'}catch(e){$('error').textContent='Browser storage unavailable or full; export CSV instead.'}
+});
+$('loadFlightBtn').addEventListener('click',()=>{
+ try{const saved=JSON.parse(localStorage.getItem('schwabLabSavedFlight')||'null');if(!saved||!Array.isArray(saved.rows))throw Error('No saved flight found in this browser.');useData(saved.rows,'saved');$('error').textContent='Loaded your saved flight.'}catch(e){$('error').textContent=e.message||'Could not load the saved flight.'}
+});
+
 $('csvHelp').addEventListener('click',()=>download('time,x,y,z\n0,0,0,0\n1,1,0,10\n2,2,1,18\n3,3,2,21\n4,4,3,19\n5,5,3,12\n6,6,4,0\n','flight_csv_template.csv'));
 const timeIndex=t=>{let l=0,h=rows.length-1;while(l<h){let m=(l+h)>>1;if(rows[m].t<t)l=m+1;else h=m}return clamp(l,0,rows.length-1)};
 function setTime(t){elapsed=clamp(t,rows[0].t,rows.at(-1).t);index=timeIndex(elapsed);$('timeline').value=Math.round(1000*(elapsed-rows[0].t)/(rows.at(-1).t-rows[0].t));renderAll()}
@@ -150,6 +158,9 @@ function renderScene(){drawScene()}
 function renderAll(){if(!rows.length)return;renderTelemetry();drawScene();drawPlot(aChart,'z','#4de1c6');drawPlot(sChart,'s','#7dbfff')}
 window.addEventListener('resize',renderAll);
 function frame(ts){if(anim&&rows.length){if(!lastFrame)lastFrame=ts;let dt=Math.min((ts-lastFrame)/1000,.15);elapsed+=dt*Number($('speed').value);if(elapsed>=rows.at(-1).t){elapsed=rows.at(-1).t;anim=false;$('playBtn').textContent='▶ Play'}index=timeIndex(elapsed);$('timeline').value=Math.round(1000*(elapsed-rows[0].t)/(rows.at(-1).t-rows[0].t));renderAll()}lastFrame=ts;requestAnimationFrame(frame)}
-tryDemo();requestAnimationFrame(frame);
+tryDemo();
+// Receive a passive simulated trajectory from Physics Studio via same-tab session storage.
+try{const transferred=sessionStorage.getItem('schwabLabPhysicsFlight');if(transferred){sessionStorage.removeItem('schwabLabPhysicsFlight');useData(JSON.parse(transferred),'physics')}}catch(e){$('error').textContent='Unable to open the transferred simulation.'}
+requestAnimationFrame(frame);
 window.__schwabLabTest={get rows(){return rows},parseCsv,renderAll};
 })();
