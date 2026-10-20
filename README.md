@@ -15,10 +15,11 @@ schwab-lab/
 │   ├── css/
 │   │   ├── home.css           # Landing page styles
 │   │   ├── lab.css            # Flight Lab styles
-│   │   └── physics.css        # Physics Studio styles
+│   │   └── physics.css        # Design Archive styles
 │   ├── js/
 │   │   ├── flight-lab.js      # Flight playback, charting and CSV parsing
-│   │   ├── physics-lab.js     # 1D simulation, OpenRocket reader, browser saves
+│   │   ├── physics-lab.js     # OpenRocket inspection and project saving
+│   │   ├── simulation-viewer.js # Saved OpenRocket data visualization
 │   │   └── jszip.min.js       # Locally bundled JSZip ZIP reader
 │   └── icons/
 │       └── favicon.svg
@@ -117,7 +118,7 @@ Schwab Lab is for **educational visualization and post-flight analysis**. Its bu
 - Publish updates simply by committing changes to `main` after enabling Pages.
 
 
-## Design Archive (version 2)
+## Design Archive (version 2.1)
 
 The `physics.html` workspace inspects previously saved OpenRocket `.ork` or uncompressed XML design files locally. It lists rocket components, recorded motor selections, and saved OpenRocket simulation summaries when present. It allows you to document recorded mass, aerodynamic drag coefficient, impulse and burn time without creating a powered-flight prediction or guidance output.
 
@@ -129,3 +130,42 @@ The `physics.html` workspace inspects previously saved OpenRocket `.ork` or unco
 - **Flight Lab**: save and reload one trajectory locally, import recorded CSV trajectories, visualize measured motion, and export CSV.
 
 All data stays in the browser. Browser storage can be cleared, so export backups. The site is an educational inspection/analysis tool and does **not** predict powered rocket performance, control hardware, or provide flight guidance.
+
+### Replay saved OpenRocket simulation results
+
+In **Design Archive**, import a `.ork` file and scroll down to **Saved Flight Replay**. Select a simulation and, where applicable, a flight-data branch (for example, a separated stage).
+
+The viewer reads existing OpenRocket XML `<flightdata><databranch types="..."><datapoint>...` entries and displays **only recorded data** in four customizable graphs. Available fields may include altitude, total or vertical velocity, acceleration, drag, thrust, mass, and other fields already saved in the file. The time scrubber displays a moving cursor and nearby recorded event labels. You can click a chart to inspect a saved timestamp and export the selected branch as CSV. The selected plot/time position is included in Schwab Lab project saves.
+
+Not all `.ork` files contain the full time series: OpenRocket may store only summary metadata depending on its save settings. When no data points are embedded, Schwab Lab displays a clear summary-only message rather than generating values. Up to 12 flight-data branches and 12,000 displayed samples per branch are parsed; longer time series are *downsampled for viewing and CSV export*, while the original `.ork` is preserved in the project file.
+
+**This is a read-only viewer, not a replacement for OpenRocket's physics simulation engine.** It does not calculate expected launch behavior or provide active guidance or control.
+
+## Launch Environment & conservative federal flags (version 2.2)
+
+Design Archive now stores launch-location reference coordinates selected from a map or typed manually, date and time, recorded launch angle, temperature, pressure, and wind. The map is for documenting a site **only**, not choosing a safe launch site. It uses Leaflet and OpenStreetMap tiles over the network; the rest of the app works offline without the map. Nothing is geolocated automatically. These fields are included in browser saves and exported `.schwab.json` projects, and old archive files still open.
+
+An automatic **Regulatory Flags** panel compares recorded entries with selected FAA amateur-rocket rules in 14 CFR Part 101. It flags missing data, Class 1 classification conflicts (loaded mass, propellant mass, materials, and propellant type), self-reported hazards, and additional review obligations potentially relevant to non-Class 1 activities. All flags cite official sources.
+
+**Critical limits:** This is not legal advice, a regulatory clearance, a live airspace check, or a launch-safety determination. It never returns approval or 'safe to launch'. It does not query FAA NOTAMs, airport boundaries, temporary flight restrictions, restricted airspace, or local laws. Separately consult FAA resources and qualified adult supervision. An imported `.ork` is not proof its entered materials or motor are compliant; undocumented inputs remain unknown.
+
+## Guidance Research
+
+`guidance.html` holds the future passive research roadmap, reference-frame concepts and measurement notes. It does not produce steering commands, motor selection advice, live guidance, or in-flight control.
+
+Official sources: [14 CFR Part 101 Subpart C](https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-101/subpart-C), [FAA airspace restrictions](https://www.faa.gov/air_traffic/publications/us_restrictions), [FAA NOTAMs and TFRs](https://www.faa.gov/pilots/safety/notams_tfr).
+
+## Site Conditions, Regulatory Flags & Guidance Research (v2.2)
+
+In **Design Archive → Site Conditions & Safety Review**, record a place and date associated with an experiment or existing design, including a point selected from an OpenStreetMap map (Leaflet), site elevation, observed atmospheric values, and the angle noted in a prior report. Entries are **documentation only** and are never fed into launch commands, launch-angle optimization, or a new rocket flight prediction. All these fields are included in **Save to browser**, **Export project**, and **Open project**. Previously exported v1 archives without the site fields remain readable.
+
+The **Automatic regulatory flagger** is a conservative, offline screening tool based on selected provisions of [14 CFR Part 101 Subpart C](https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-101/subpart-C) (reviewed October 2026):
+
+- Highlights recorded mass above 1,500 grams including propellant, or propellant above 125 grams, as **possible Class 1 classification mismatches** under § 101.22.
+- Flags uncertainty about structural materials, substantial metal parts, and slow-burning propellant.
+- Records whether airspace, site permission and hazard reviews have been separately documented.
+- Always warns that applicable FAA restrictions and ATC requirements may need independent review.
+
+**It never returns a launch authorization or a legal compliance certificate.** Being outside the Class 1 definition does **not** mean that an operation is necessarily unlawful; it may be in a different class with different requirements. This app has no live FAA/NOTAM, airport-boundary, restricted-airspace, or governmental approval feed. The interactive map is for a reference point **only**. OpenStreetMap map tiles require internet access and receive map tile requests; manual coordinate input and project data processing are local. Future weather is not retrieved or forecast. Regulations may change—always review the official sources and consult qualified personnel.
+
+**Guidance Research** is a reserved, read-only educational section about coordinate frames, measurement uncertainty, and comparing previously recorded data. It contains no steering logic, flight control outputs, targeting, or actuator interfaces.
