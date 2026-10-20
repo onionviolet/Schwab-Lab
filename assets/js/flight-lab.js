@@ -42,7 +42,13 @@ for(const id of ['bearing','elev'])ui[id].addEventListener('input',()=>{updateLa
 for(const id of ['showVel','showAcc','showRef'])$(id).addEventListener('change',renderScene);
 $('demoBtn').addEventListener('click',tryDemo);
 function parseCsv(text){
- let clean=text.replace(/^\ufeff/,'').trim();let firstLine=clean.split(/\r?\n/).find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
+ let clean=text.replace(/^\ufeff/,'').trim();
+ // OpenRocket CSV exports their actual column names as a '# Time (s),Altitude (m),...' line.
+ clean=clean.split(/\r?
+/).map(line=>/^\s*#\s*time\s*\(/i.test(line)&&/,\s*altitude\s*\(/i.test(line)?line.replace(/^\s*#\s*/, ''):line).join('
+');
+ let firstLine=clean.split(/\r?
+/).find(l=>l.trim()&&!l.trim().startsWith('#'))||'';
  let delimiter=[',','\t',';'].sort((a,b)=>firstLine.split(b).length-firstLine.split(a).length)[0];
  const matrix=[];let item='',line=[],inQuote=false;
  for(let i=0;i<clean.length;i++){
@@ -55,7 +61,7 @@ function parseCsv(text){
  if(matrix.length<4)throw Error('CSV requires a header and at least 3 data rows.');
  const normalize=s=>s.toLowerCase().replace(/\[[^\]]*\]/g,'').replace(/\([^)]*\)/g,'').replace(/[^a-z0-9]/g,'');
  const fields=matrix[0].map(normalize);
- const choices={t:['time','t','times'],x:['x','xm','east','positioneast','eastposition'],y:['y','ym','north','positionnorth','northposition'],z:['z','zm','altitude','height','altitudeagl','altitudeaboveground','altitudeabovegroundlevel','verticalposition'],vx:['vx','veast','velocityeast','eastvelocity','velocityx'],vy:['vy','vnorth','velocitynorth','northvelocity','velocityy'],vz:['vz','vup','verticalvelocity','velocityz','velocityup'],ax:['ax','accelerationx'],ay:['ay','accelerationy'],az:['az','verticalacceleration','accelerationz']};
+ const choices={t:['time','t','times'],x:['x','xm','east','positioneast','eastposition','positioneastoflaunch'],y:['y','ym','north','positionnorth','northposition','positionnorthoflaunch'],z:['z','zm','altitude','height','altitudeagl','altitudeaboveground','altitudeabovegroundlevel','verticalposition'],vx:['vx','veast','velocityeast','eastvelocity','velocityx'],vy:['vy','vnorth','velocitynorth','northvelocity','velocityy'],vz:['vz','vup','verticalvelocity','velocityz','velocityup'],ax:['ax','accelerationx'],ay:['ay','accelerationy'],az:['az','verticalacceleration','accelerationz']};
  let cols={}; for(let [key,opts] of Object.entries(choices)){let i=fields.findIndex(s=>opts.includes(s));cols[key]=i}
  if(cols.t<0||cols.z<0)throw Error('Missing time or altitude column. Required: time,z (or time,altitude).');
  let result=[];for(let ri=1;ri<matrix.length;ri++){
