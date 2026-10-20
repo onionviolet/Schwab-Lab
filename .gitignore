@@ -1,0 +1,13 @@
+# macOS
+.DS_Store
+# Local editor and IDE settings
+.vscode/
+.idea/
+# Python temporary files
+__pycache__/
+*.pyc
+# Node packages
+node_modules/
+# Environment and secrets
+.env
+.env.*
