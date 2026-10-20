@@ -10,12 +10,16 @@
 schwab-lab/
 ├── index.html                 # Landing page (required at the publishing root)
 ├── lab.html                   # Flight Lab interface
+├── physics.html               # Model physics, OpenRocket inspection, saving
 ├── assets/
 │   ├── css/
 │   │   ├── home.css           # Landing page styles
-│   │   └── lab.css            # Flight Lab styles
+│   │   ├── lab.css            # Flight Lab styles
+│   │   └── physics.css        # Physics Studio styles
 │   ├── js/
-│   │   └── flight-lab.js      # Flight playback, charting and CSV parsing
+│   │   ├── flight-lab.js      # Flight playback, charting and CSV parsing
+│   │   ├── physics-lab.js     # 1D simulation, OpenRocket reader, browser saves
+│   │   └── jszip.min.js       # Locally bundled JSZip ZIP reader
 │   └── icons/
 │       └── favicon.svg
 ├── data/
@@ -111,3 +115,17 @@ Schwab Lab is for **educational visualization and post-flight analysis**. Its bu
 - Change Flight Lab controls/markup in `lab.html` and styling in `assets/css/lab.css`.
 - Change data-processing and visualization logic in `assets/js/flight-lab.js`.
 - Publish updates simply by committing changes to `main` after enabling Pages.
+
+
+## Design Archive (version 2)
+
+The `physics.html` workspace inspects previously saved OpenRocket `.ork` or uncompressed XML design files locally. It lists rocket components, recorded motor selections, and saved OpenRocket simulation summaries when present. It allows you to document recorded mass, aerodynamic drag coefficient, impulse and burn time without creating a powered-flight prediction or guidance output.
+
+- **Import .ork**: unpack the ZIP in the browser with a locally bundled copy of JSZip and read `rocket.ork` metadata. Files are limited to 8 MB; XML is capped at 12 MB.
+- **Save to browser**: local IndexedDB project library.
+- **Export project**: portable `.schwab.json` file, including notes, recorded properties and any attached original `.ork` bytes.
+- **Open project**: restore from exported `.schwab.json` files.
+- **Download original .ork**: recover the unmodified source file.
+- **Flight Lab**: save and reload one trajectory locally, import recorded CSV trajectories, visualize measured motion, and export CSV.
+
+All data stays in the browser. Browser storage can be cleared, so export backups. The site is an educational inspection/analysis tool and does **not** predict powered rocket performance, control hardware, or provide flight guidance.
