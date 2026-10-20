@@ -185,3 +185,10 @@ Run `python3 tests/site_check.py` from the repository root to check internal pag
 Visit [`live.html`](live.html) for a virtual Arduino Uno dashboard, local recording, CSV downloads and replay. In compatible Chromium desktop browsers over HTTPS, the **USB Serial (read only)** option can open a device the user explicitly selects. Schwab Lab never writes serial data to the hardware.
 
 Expected serial line, with comma-separated **numeric** values: `time,pressure,temperature,acceleration,rotation,altitude` (seconds, hPa, °C, m/s², °/s, m). Optional header accepted. The physical hardware and firmware must already supply this stream; the application does not install firmware, provide a sensor wiring guide, or send device commands. Readings remain on the local machine unless explicitly downloaded/shared. The synthetic mode is a software demonstration, not a flight predictor.
+
+
+## CAD Library: OpenRocket design references
+
+The CAD Library (`cad.html`) now accepts `.ork` files alongside STL, OBJ and 3MF. It reads OpenRocket's ZIP archive containing `rocket.ork` (or its uncompressed XML form), validates size and XML structure, and shows a **non-scaled component hierarchy** with available component lengths/radii converted from meters to millimeters. The original `.ork` bytes, study notes, project tag and revision can be stored in the existing local CAD library, exported as a `.schwabcad.json` record, and reopened.
+
+An `.ork` is not a mesh. The component hierarchy **does not represent actual surface geometry, placement, printable parts, or a validated digital twin**; the tool does not export manufacturable rocket geometry or generate slicer files from `.ork`. 8 MB maximum import, with limits for archive entries, XML length and displayed components. Existing STL/OBJ/3MF inspection remains available.
